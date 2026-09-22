@@ -18,7 +18,7 @@ resource "random_string" "str" {
   special = false
   upper   = false
   keepers = {
-    domain_name_label = coalesce(var.custom_bastion_name, data.popsrox_resource_name.bastion.result)
+    domain_name_label = local.bastion_name
   }
 }
 
@@ -31,7 +31,7 @@ resource "azurerm_public_ip" "pip" {
   resource_group_name = data.azurerm_resource_group.rg.name
   allocation_method   = var.public_ip_allocation_method
   sku                 = var.public_ip_sku # Mandatory for Azure Bastion host is Standard
-  domain_name_label   = var.domain_name_label != null ? var.domain_name_label : format("gw%s%s", lower(replace(coalesce(var.custom_bastion_name, data.popsrox_resource_name.bastion.result), "/[[:^alnum:]]/", "")), random_string.str.result)
+  domain_name_label   = var.domain_name_label != null ? var.domain_name_label : format("gw%s%s", lower(replace(local.bastion_name, "/[[:^alnum:]]/", "")), random_string.str.result)
   zones               = var.public_ip_zones
 
   tags = merge(local.default_tags, var.add_tags)
@@ -58,10 +58,10 @@ resource "azurerm_bastion_host" "main" {
   scale_units            = var.scale_units
   shareable_link_enabled = var.bastion_sku == "Standard" ? var.enable_shareable_link : null
   tunneling_enabled      = var.bastion_sku == "Standard" ? var.enable_tunneling : null
-  tags                   = merge({ "ResourceName" = lower(coalesce(var.custom_bastion_name, data.popsrox_resource_name.bastion.result)) }, var.add_tags, )
+  tags                   = merge({ "ResourceName" = lower(local.bastion_name) }, var.add_tags, )
 
   ip_configuration {
-    name                 = "${lower(coalesce(var.custom_ipconfig_name, data.popsrox_resource_name.bastion.result))}-ipconfig"
+    name                 = "${lower(coalesce(local.custom_ipconfig_name, local.bastion_name))}-ipconfig"
     subnet_id            = azurerm_subnet.abs_snet.0.id
     public_ip_address_id = azurerm_public_ip.pip.id
   }
